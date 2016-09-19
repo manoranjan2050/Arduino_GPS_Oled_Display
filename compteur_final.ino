@@ -29,6 +29,10 @@ double coordStartLat=0.0;
 double coordStartLng=0.0;
 char avg_final[20];
 
+//Reference Latitude and Longitude
+double ref_LAT = 0.0;
+double ref_LONG = 0.0;
+
 /************************ TEMPERATURE SENSOR *************************/
 boolean getTemperature(float *temp){
   byte data[9], addr[8];  // data : Data read from scratchpad     ||   addr : 1-Wire module address
@@ -64,18 +68,46 @@ boolean getTemperature(float *temp){
 }
 /************************ END TEMPERATURE SENSOR *************************/
 
+/************************* INIT GPS ANIMATION **************************/
+void displayInitGPS()
+{
+  static int animation;
+  String initGPS = "Initalizing GPS";
+  animation++;
+  if(animation>6) animation = 1;
+  display.print(initGPS);
+  
+  //Display spaces
+  for(int i=1; i<animation; i++)
+  {
+    display.print(".");
+  }
+  
+  //display dots
+  for(int i=0; i<6-animation; i++)
+  {
+    display.print(" ");
+  }
+}
+/*********************** END INIT GPS ANIMATION **************************/
 
 /************************ MAIN DISPLAY MANAGEMENT *************************/
 void displayInfo(int *maxspeed)
 {
-  float temp;
+  static float temp;
+  static bool tempReceived = false;
+
+  if(getTemperature(&temp)){
+    tempReceived = true;
+  }
+  
   float currentSpeed = 0.0;
+  
   int numSatellites = 0;
   if(gps.speed.isValid()) currentSpeed=gps.speed.kmph();
  
   if (gps.location.isValid())
   {
-    if(getTemperature(&temp)){ // If temperature correctly received (prevents screen flickering)
     Serial.print(F("location: "));
     Serial.print(gps.location.lat(), 6);
     Serial.print(F(","));
@@ -97,16 +129,9 @@ void displayInfo(int *maxspeed)
     display.print(F("km/h"));
 /********* END DISPLAY SPEED *********/
 
-/********* DISPLAY TEMP *********/
-    display.setTextSize(1);
-    display.setCursor(90,0);
-    display.print(temp,1);    //1 to specify one decimal digit only
-    display.print((char)247); //Degrees Celcius symbol
-    display.print('C');
-/********* END DISPLAY TEMP *********/
-
 /********* DISPLAY MAX *********/
   if(*maxspeed<currentSpeed) *maxspeed=currentSpeed;
+  display.setTextSize(1);
   display.setCursor(0,55);
   display.print(*maxspeed);
   display.print(F("km/h"));
@@ -119,10 +144,15 @@ void displayInfo(int *maxspeed)
   display.print(F(" Sats"));
 /********* END DISPLAY SAT *********/
 
-  const double ceri_LAT = 43.730178;
-  const double ceri_LONG = 4.224686;
-  double distanceKm = TinyGPSPlus::distanceBetween(gps.location.lat(),gps.location.lng(),ceri_LAT,ceri_LONG) / 1000.0;
-  double courseTo = TinyGPSPlus::courseTo(gps.location.lat(),gps.location.lng(),ceri_LAT,ceri_LONG);
+ //Initial reference position initialization
+ if(ref_LAT == 0)
+ {
+  ref_LAT = gps.location.lat();
+  ref_LONG = gps.location.lng();
+ }
+  
+  double distanceKm = TinyGPSPlus::distanceBetween(gps.location.lat(),gps.location.lng(),ref_LAT,ref_LONG) / 1000.0;
+  double courseTo = TinyGPSPlus::courseTo(gps.location.lat(),gps.location.lng(),ref_LAT,ref_LONG);
   
 /********* DISPLAY DISTANCE *********/    
   display.setCursor(80,55);
@@ -151,18 +181,27 @@ void displayInfo(int *maxspeed)
     */
 /********* END DISPLAY AVG *********/
 
-    }
   }
   else
   {
     Serial.print(F("INVALID"));
     display.update();
     display.clear();
-    display.setTextSize(2);
+    display.setTextSize(1);
     display.setTextColor(WHITE);
     display.setCursor(0,25);
-    display.print("Init GPS...");
+    displayInitGPS();
   }
+
+/********* DISPLAY TEMP *********/
+  if(tempReceived){ // If temperature correctly received (prevents screen flickering)
+      display.setTextSize(1);
+      display.setCursor(90,0);
+      display.print(temp,1);    //1 to specify one decimal digit only
+      display.print((char)247); //Degrees Celcius symbol
+      display.print('C');
+  }
+/********* END DISPLAY TEMP *********/
 
   Serial.print(F(" "));
   if (gps.time.isValid())
@@ -171,25 +210,25 @@ void displayInfo(int *maxspeed)
     display.setTextSize(1);
     display.setTextColor(WHITE);
     display.setCursor(0,0);
-    if (gps.time.hour() < 9) display.print("0");
+    if (gps.time.hour() < 10) display.print("0");
     display.print(gps.time.hour()+1);
     display.print(":");
-    if (gps.time.minute() < 9) display.print("0");
+    if (gps.time.minute() < 10) display.print("0");
     display.print(gps.time.minute());
-/********* END DISPLAY TIME *********/
-  
+    /********* END DISPLAY TIME *********/
   }
   else
   {
     Serial.print(F("INVALID"));
     display.update();
     display.clear();
-    display.setTextSize(2);
+    display.setTextSize(1);
     display.setTextColor(WHITE);
     display.setCursor(0,25);
-    display.print("Init GPS...");
+    displayInitGPS();
   }
-    Serial.println();
+  
+  Serial.println();
 }
 /********************** END MAIN DISPLAY MANAGEMENT *********************/
 
@@ -221,10 +260,7 @@ void setup()
 
 void loop()
 {
-  smartDelay(300);
-  /*
-  while (gps_serial.available())
-      gps.encode(gps_serial.read());*/
+  smartDelay(300);  //Leaving some time for the GPS to breath...
       
 /***** INIT VARIABLES FOR AVERAGE SPEED CALCULATIONS *****/
     if(!done){    
@@ -254,3 +290,4 @@ void loop()
     smartDelay(1000);
   }
 }
+
