@@ -2,16 +2,19 @@
 #include <SoftwareSerial.h>
 #include <OneWire.h>
 #include <Adafruit_ssd1306syp.h>
+
+//Define OLED PINS
 #define SDA_PIN 2
 #define SCL_PIN 3
 
 //Init OLED Display
 Adafruit_ssd1306syp display(SDA_PIN,SCL_PIN);
 
+//This is required for temperature sensor
 #define DS18B20 0x28
 
-//This is the temperature sensor
-OneWire  ds(10);
+//This is the temperature sensor init
+OneWire ds(10);
 
 // Initialize TinyGPSPlus library
 TinyGPSPlus gps;
@@ -20,7 +23,7 @@ TinyGPSPlus gps;
 SoftwareSerial gps_serial(15, 14);		// RX connected to 15, TX connected to 14
 
 int maxspeed=0;
-int verif=0;
+bool done=false;
 double startTime=0.0;
 double coordStartLat=0.0;
 double coordStartLng=0.0;
@@ -59,7 +62,10 @@ boolean getTemperature(float *temp){
   // No error!
   return true;
 }
+/************************ END TEMPERATURE SENSOR *************************/
 
+
+/************************ MAIN DISPLAY MANAGEMENT *************************/
 void displayInfo(int *maxspeed)
 {
   float temp;
@@ -180,9 +186,9 @@ void displayInfo(int *maxspeed)
   }
     Serial.println();
 }
-    
-/************************ END DISPLAY TEMPERATURE *************************/
+/********************** END MAIN DISPLAY MANAGEMENT *********************/
 
+/************************** GPS SMART DELAY *****************************/
 // This custom version of delay() ensures that the gps object
 // is being "fed".
 static void smartDelay(unsigned long ms)
@@ -194,7 +200,9 @@ static void smartDelay(unsigned long ms)
       gps.encode(gps_serial.read());
   } while (millis() - start < ms);
 }
+/************************** END GPS SMART DELAY *************************/
 
+/******************************* MAIN SETUP *****************************/
 void setup()
 {
   //Init standard serial   
@@ -204,31 +212,35 @@ void setup()
   //Init OLED display
   display.initialize();
 }
+/**************************** END MAIN SETUP ****************************/
 
 void loop()
 {
   while (gps_serial.available())
       gps.encode(gps_serial.read());
       
-/************************ INITIALISATION DES VARIABLES POUR LA MOYENNE (coordoonnées et heure du départ) *************************/
-    if(verif==0){
+/***** INIT VARIABLES FOR AVERAGE SPEED CALCULATIONS *****/
+    if(!done){    
       startTime=(gps.time.hour()+1)+(gps.time.minute()/60.0);
       coordStartLat=gps.location.lat();
       coordStartLng=gps.location.lng();
       if(gps.location.isValid()){			// Just to make sure we do this loop once
-         verif++; 
+         done=true;
       } 
     }
-/************************ FIN INITIALISATION DES VARIABLES POUR LA MOYENNE (coordoonnées et heure du départ) *************************/
+/*** END INIT VARIABLES FOR AVERAGE SPEED CALCULATIONS ****/
 
+  // Go and display!
   displayInfo(&maxspeed);
 
+  //Fatal error? GPS not correctly detected...
   if (millis() > 5000 && gps.charsProcessed() < 10)
   {
     Serial.println(F("No GPS detected: check wiring."));
     while(true);
   }
 
+  //Not yet able to detect satellites correctly? Let's have a breath...
   if(gps.satellites.isValid()==false) smartDelay(500);
 }
 
