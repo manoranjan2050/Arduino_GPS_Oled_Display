@@ -1,71 +1,73 @@
 #include <TinyGPS++.h>
 #include <SoftwareSerial.h>
 #include <OneWire.h>
-#include <Adafruit_GFX.h>
 #include <Adafruit_ssd1306syp.h>
 #define SDA_PIN 2
 #define SCL_PIN 3
+
+//Init OLED Display
 Adafruit_ssd1306syp display(SDA_PIN,SCL_PIN);
 
 #define DS18B20 0x28
 
+//This is the temperature sensor
 OneWire  ds(10);
 
-// Création du gps via la librairie TinyGPSPlus
+// Initialize TinyGPSPlus library
 TinyGPSPlus gps;
 
-// Connexion série pour le GPS
-SoftwareSerial gps_serial(15, 14);		// Port choisi sur Arduino UNO, le TX ne nous interesse pas
+// The GPS sensor is plugged to PINs 15 and 14
+SoftwareSerial gps_serial(15, 14);		// RX connected to 15, TX connected to 14
 
 int maxspeed=0;
 int verif=0;
-double heureDepart=0.0;
-double coordDepartLat=0.0;
-double coordDepartLng=0.0;
+double startTime=0.0;
+double coordStartLat=0.0;
+double coordStartLng=0.0;
 char avg_final[20];
 
-/************************ CAPTEUR TEMPERATURE *************************/
+/************************ TEMPERATURE SENSOR *************************/
 boolean getTemperature(float *temp){
-  byte data[9], addr[8];  // data : Données lues depuis le scratchpad     ||   addr : adresse du module 1-Wire détecté
+  byte data[9], addr[8];  // data : Data read from scratchpad     ||   addr : 1-Wire module address
 
-  if (!ds.search(addr)) { // Recherche un module 1-Wire
-    ds.reset_search();    // Réinitialise la recherche de module
-    return false;         // Retourne une erreur
+  if (!ds.search(addr)) { // Look for the 1-Wire module
+    ds.reset_search();    // Reset search module
+    return false;         // In case of an error
   }
 
-  if (OneWire::crc8(addr, 7) != addr[7]) // Vérifie que l'adresse a été correctement reçue
-    return false;                        // Si le message est corrompu on retourne une erreur
+  if (OneWire::crc8(addr, 7) != addr[7]) // Check the address has been correctly received
+    return false;                        // Return an error if not...
 
-  if (addr[0] != DS18B20) // Vérifie qu'il s'agit bien d'un DS18B20
-      return false;         // Si ce n'est pas le cas on retourne une erreur
+  if (addr[0] != DS18B20) // Check that we have a DS18B20 sensor
+      return false;       // Return an error if not...
 
-  ds.reset();             // On reset le bus 1-Wire
-  ds.select(addr);        // On sélectionne le DS18B20
+  ds.reset();             // 1-Wire bus reset
+  ds.select(addr);        // Select the DS18B20 sensor
 
-  ds.write(0x44, 1);      // On lance une prise de mesure de température
+  ds.write(0x44, 1);      // Get temperature
 
-  ds.reset();             // On reset le bus 1-Wire
-  ds.select(addr);        // On sélectionne le DS18B20
-  ds.write(0xBE);         // On envoie une demande de lecture du scratchpad
+  ds.reset();             // 1-Wire bus reset
+  ds.select(addr);        // Select the DS18B20 sensor
+  ds.write(0xBE);         // Send scratchpad read request
 
-  for (byte i = 0; i < 9; i++) // On lit le scratchpad
-    data[i] = ds.read();       // Et on stock les octets reçus
+  for (byte i = 0; i < 9; i++) // Read scratchpad
+    data[i] = ds.read();       // Store bytes received
 
-  // Calcul de la température en degré Celsius
+  // Convert temperature to Celsius
   *temp = ((data[1] << 8) | data[0]) * 0.0625; 
 
-  // Pas d'erreur
+  // No error!
   return true;
 }
 
 void displayInfo(int *maxspeed)
 {
   float temp;
-  int vitesse=gps.speed.kmph();
-  //Serial.print(F("Localisation: ")); 
+  int currentSpeed=gps.speed.kmph();
+ 
   if (gps.location.isValid())
   {
-    if(getTemperature(&temp)){ // Si le capteur de température est bien connecté (permet l'affichage de toutes les infos sur l'écran sans clignotements)
+    if(getTemperature(&temp)){ // If temperature correctly received (prevents screen flickering)
     Serial.print(gps.location.lat(), 6);
     Serial.print(F(","));
     Serial.print(gps.location.lng(), 6);
@@ -80,51 +82,51 @@ void displayInfo(int *maxspeed)
     display.setTextColor(WHITE);
     display.setCursor(30,26);
   
-/********* AFFICHAGE VITESSE *********/
-    display.print(vitesse);
+/********* DISPLAY SPEED *********/
+    display.print(currentSpeed);
     display.print("km/h");
-/********* FIN AFFICHAGE VITESSE *********/
+/********* END DISPLAY SPEED *********/
 
-/********* AFFICHAGE TEMP *********/
+/********* DISPLAY TEMP *********/
     display.setTextSize(1);
     display.setCursor(90,0);
-    display.print(temp,1); //1 to specify one decimal digit only
+    display.print(temp,1);    //1 to specify one decimal digit only
     display.print((char)247); //Degrees Celcius symbol
     display.print('C');
-/********* FIN AFFICHAGE TEMP *********/
+/********* END DISPLAY TEMP *********/
 
-/********* AFFICHAGE MAX *********/
+/********* DISPLAY MAX *********/
   if(*maxspeed<gps.speed.kmph()) *maxspeed=gps.speed.kmph();
   display.setCursor(0,55);
   display.print(*maxspeed);
     display.print("km/h");
-/********* FIN AFFICHAGE MAX *********/
+/********* END DISPLAY MAX *********/
 
-/********* AFFICHAGE SAT *********/
+/********* DISPLAY SAT *********/
   display.setCursor(40,6);
   display.print(gps.satellites.value());
   display.print(" Sats");
-/********* FIN AFFICHAGE SAT *********/
+/********* END DISPLAY SAT *********/
 
   const double ceri_LAT = 43.730178;
   const double ceri_LONG = 4.224686;
   double distanceKm = TinyGPSPlus::distanceBetween(gps.location.lat(),gps.location.lng(),ceri_LAT,ceri_LONG) / 1000.0;
   double courseTo = TinyGPSPlus::courseTo(gps.location.lat(),gps.location.lng(),ceri_LAT,ceri_LONG);
   
-/********* AFFICHAGE DISTANCE *********/    
+/********* DISPLAY DISTANCE *********/    
   display.setCursor(80,55);
   display.print(distanceKm);  
   display.print("km");
-/********* FIN AFFICHAGE DISTANCE *********/
+/********* END DISPLAY DISTANCE *********/
 
 
-/********* AFFICHAGE AVG *********/
+/********* DISPLAY AVG *********/
 /*
     double heure=(gps.time.hour()+1)+(gps.time.minute()/60.0);
     double coordLat=gps.location.lat();
     double coordLng=gps.location.lng();
-    double temps=heure-heureDepart;
-    double distance=TinyGPSPlus::distanceBetween(coordDepartLat,coordDepartLng,coordLat,coordLng) / 1000.0;
+    double temps=heure-startTime;
+    double distance=TinyGPSPlus::distanceBetween(coordStartLat,coordStartLng,coordLat,coordLng) / 1000.0;
     double avg=distance/temps;
     
     avg=floor(avg*10)/10;        //Permet d'arrondir a 0.0
@@ -136,7 +138,7 @@ void displayInfo(int *maxspeed)
     display.print(avg_final); 
     display.print("km/h");
     */
-/********* FIN AFFICHAGE AVG *********/
+/********* END DISPLAY AVG *********/
 
     }
   }
@@ -154,7 +156,7 @@ void displayInfo(int *maxspeed)
   Serial.print(F(" "));
   if (gps.time.isValid())
   {
-    /********* AFFICHAGE HEURE *********/ 
+    /********* DISPLAY TIME *********/ 
     display.setTextSize(1);
     display.setTextColor(WHITE);
     display.setCursor(0,0);
@@ -163,7 +165,7 @@ void displayInfo(int *maxspeed)
     display.print(":");
     if (gps.time.minute() < 9) display.print("0");
     display.print(gps.time.minute());
-/********* FIN AFFICHAGE HEURE *********/
+/********* END DISPLAY TIME *********/
   
   }
   else
@@ -179,7 +181,7 @@ void displayInfo(int *maxspeed)
     Serial.println();
 }
     
-/************************ FIN CAPTEUR TEMPERATURE *************************/
+/************************ END DISPLAY TEMPERATURE *************************/
 
 // This custom version of delay() ensures that the gps object
 // is being "fed".
@@ -195,10 +197,12 @@ static void smartDelay(unsigned long ms)
 
 void setup()
 {
+  //Init standard serial   
   Serial.begin(115200);
+  //Init GPS serial
   gps_serial.begin(9600);
+  //Init OLED display
   display.initialize();
-
 }
 
 void loop()
@@ -208,14 +212,15 @@ void loop()
       
 /************************ INITIALISATION DES VARIABLES POUR LA MOYENNE (coordoonnées et heure du départ) *************************/
     if(verif==0){
-      heureDepart=(gps.time.hour()+1)+(gps.time.minute()/60.0);
-      coordDepartLat=gps.location.lat();
-      coordDepartLng=gps.location.lng();
-      if(gps.location.isValid()){			// Permet d'incrémenter la variable verif afin de faire la boucle précedente une seule fois
+      startTime=(gps.time.hour()+1)+(gps.time.minute()/60.0);
+      coordStartLat=gps.location.lat();
+      coordStartLng=gps.location.lng();
+      if(gps.location.isValid()){			// Just to make sure we do this loop once
          verif++; 
       } 
     }
 /************************ FIN INITIALISATION DES VARIABLES POUR LA MOYENNE (coordoonnées et heure du départ) *************************/
+
   displayInfo(&maxspeed);
 
   if (millis() > 5000 && gps.charsProcessed() < 10)
@@ -224,6 +229,6 @@ void loop()
     while(true);
   }
 
-if(gps.satellites.isValid()==false) smartDelay(500);
+  if(gps.satellites.isValid()==false) smartDelay(500);
 }
 
