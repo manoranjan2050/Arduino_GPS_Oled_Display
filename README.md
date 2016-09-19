@@ -25,7 +25,7 @@ The following open source libraries are used (to be copied to your 'Ardunio/Libr
 - Adafruit_ssd1306syp, used to control the OLED display: https://github.com/Miyeah/Arduino-Dormitory-Assistant/tree/master/library/Adafruit_ssd1306syp
 
 The Arduino board is connected to the PC which sends the program once compiled and also enables to read the Serial output (use the serial monitor in the Araduino IDE).
-The GPS has 4 PINs: GND pin to ground, VCC to 5V, RX to PIN 15 of the Arduino board and TX to two resisors. The first resistor is 4.7k Ohms, the second is 10k Ohms. The other end of the first resistor goes to PIN 14 of the Arduino board. The other end of the second resistor goes to the ground. We are using resistors because the GPS logic is using 3.3 Volts (not 5 Volts).
+The GPS has 4 PINs: GND pin to ground, VCC to 5V, TX to PIN 15 of the Arduino board and RX to two resisors. The first resistor is 4.7k Ohms, the second is 10k Ohms. The other end of the first resistor goes to PIN 14 of the Arduino board. The other end of the second resistor goes to the ground. We are using resistors because the GPS logic is using 3.3 Volts (not 5 Volts).
 The Temperature sensor has 3 PINs. GND (black wire) goes to ground and VCC (red wire) goes to 5V. The other wire goes to PIN 10 of the Arduino board and also to a 4.7k Ohms resistor which other end is connected to 5 Volts.
 The OLED screen has 4 PINs: GND pin to ground, VCC to 5V, the SDA PIN is connected to PIN 2 of the Arduino board and the SCL PIN is connected to PIN 3 of the Arduino board.
 
