@@ -69,19 +69,20 @@ boolean getTemperature(float *temp){
 void displayInfo(int *maxspeed)
 {
   float temp;
-  int currentSpeed=gps.speed.kmph();
+  float currentSpeed = 0.0;
+  int numSatellites = 0;
+  if(gps.speed.isValid()) currentSpeed=gps.speed.kmph();
  
   if (gps.location.isValid())
   {
     if(getTemperature(&temp)){ // If temperature correctly received (prevents screen flickering)
+    Serial.print(F("location: "));
     Serial.print(gps.location.lat(), 6);
     Serial.print(F(","));
+    Serial.print(F("location:"));
     Serial.print(gps.location.lng(), 6);
-    Serial.print(F(","));
-    Serial.println(gps.speed.kmph(), 6);
-    Serial.print(F("Vitesse: ")); 
-    Serial.print(gps.speed.kmph());
-    
+    Serial.print(F(", "));
+
     display.update();
     display.clear();
     display.setTextSize(2);
@@ -89,8 +90,11 @@ void displayInfo(int *maxspeed)
     display.setCursor(30,26);
   
 /********* DISPLAY SPEED *********/
-    display.print(currentSpeed);
-    display.print("km/h");
+    Serial.print(F("Speed:"));
+    Serial.print(currentSpeed,2);
+
+    display.print(floor(currentSpeed), 0);
+    display.print(F("km/h"));
 /********* END DISPLAY SPEED *********/
 
 /********* DISPLAY TEMP *********/
@@ -102,16 +106,17 @@ void displayInfo(int *maxspeed)
 /********* END DISPLAY TEMP *********/
 
 /********* DISPLAY MAX *********/
-  if(*maxspeed<gps.speed.kmph()) *maxspeed=gps.speed.kmph();
+  if(*maxspeed<currentSpeed) *maxspeed=currentSpeed;
   display.setCursor(0,55);
   display.print(*maxspeed);
-    display.print("km/h");
+  display.print(F("km/h"));
 /********* END DISPLAY MAX *********/
 
 /********* DISPLAY SAT *********/
+  if(gps.satellites.isValid()) numSatellites = gps.satellites.value();
   display.setCursor(40,6);
-  display.print(gps.satellites.value());
-  display.print(" Sats");
+  display.print(numSatellites);
+  display.print(F(" Sats"));
 /********* END DISPLAY SAT *********/
 
   const double ceri_LAT = 43.730178;
@@ -122,7 +127,7 @@ void displayInfo(int *maxspeed)
 /********* DISPLAY DISTANCE *********/    
   display.setCursor(80,55);
   display.print(distanceKm);  
-  display.print("km");
+  display.print(F("km"));
 /********* END DISPLAY DISTANCE *********/
 
 
@@ -216,8 +221,10 @@ void setup()
 
 void loop()
 {
+  smartDelay(300);
+  /*
   while (gps_serial.available())
-      gps.encode(gps_serial.read());
+      gps.encode(gps_serial.read());*/
       
 /***** INIT VARIABLES FOR AVERAGE SPEED CALCULATIONS *****/
     if(!done){    
@@ -241,6 +248,9 @@ void loop()
   }
 
   //Not yet able to detect satellites correctly? Let's have a breath...
-  if(gps.satellites.isValid()==false) smartDelay(500);
+  if(gps.satellites.isValid()==false) 
+  {
+    Serial.println("No a valid count of satellites...");
+    smartDelay(1000);
+  }
 }
-
