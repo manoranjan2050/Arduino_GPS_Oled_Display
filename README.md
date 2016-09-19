@@ -33,6 +33,8 @@ The Temperature sensor has 3 PINs. GND (black wire) goes to ground and VCC (red 
 
 The OLED screen has 4 PINs: GND pin to ground, VCC to 5V, the SDA PIN is connected to PIN 2 of the Arduino board and the SCL PIN is connected to PIN 3 of the Arduino board.
 
+<img src="https://github.com/stephanecodo/Arduino_GPS_Oled_Display/blob/master/schema.jpg">Cabling details</img>
+
 
 Example of links to buy the hardware:
 - Arduino Pro Micro: http://www.ebay.fr/itm/140972980117?_trksid=p2057872.m2749.l2649&ssPageName=STRK%3AMEBIDX%3AIT
