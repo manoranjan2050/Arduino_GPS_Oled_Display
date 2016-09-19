@@ -1,13 +1,21 @@
 # Arduino_GPS_Oled_Display
 This project enables to display some GPS information as well as temperature on an OLED display with and Arduino Pro Micro board. It is really interesting since the hardware doesn't cost much and it's fun to learn electronics and programming.
 
-The tiny OLED display shows:
-- Time (from GPS),
-- Speed (km/h),
-- Max speed (km/h),
-- Number of satellites from GPS, 
-- Temperature (Celsius),
-- Distance from reference position.
+<table border=0>
+<tr><td>
+The tiny OLED display shows:</br>
+<ul>
+<li>Time (from GPS),</li>
+<li>Speed (km/h),</li>
+<li>Max speed (km/h),</li>
+<li>Number of satellites from GPS,</li>
+<li>Temperature (Celsius),</li>
+<li>Distance from reference position.
+</ul>
+</td><td>
+<img src="https://github.com/stephanecodo/Arduino_GPS_Oled_Display/blob/master/sample_display.JPG"></img>
+</td>
+</table>
 
 Elements required to build the project (I am providing links below if you need to purchase):
 - Arduino Pro Micro board (5 volt version),
